@@ -1,0 +1,179 @@
+---
+title: "BUAN6356_Homewrok4_Group11"
+author: Jeffrey Chang,Naishal Kanubhai Thakkar,Bhavana Chowdary Kandimalla,Navya Bulusu,Rucha
+  Nichkawade
+date: "11/14/2019"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r loadpackages, warning=FALSE, message=FALSE}
+if(!require("pacman")) install.packages("pacman")
+pacman::p_load(ISLR, MASS, rpart, rpart.plot, caret,
+               randomForest, gbm, tree, ggplot2, dplyr, caTools, leaps, stats, moments )
+```
+Hitters data set contains information on Major League Baseball from the 1986 and 1987 seasons. Among other information, it contains 1987 annual salary of baseball players (in thousands of dollars) on opening day of the season. Our goal is the predict salaries of the players. This data set is available from the ISLR package.
+
+## Question 1:
+Remove the observations with unknown salary information. How many observations were removed in this process?
+```{r}
+#head(Hitters)
+hitters.na.out <- Hitters[!is.na(Hitters$Salary),]
+str(Hitters)
+str(hitters.na.out)
+
+```
+
+### Explanation:
+The original data have 322 observations.
+After we took off the row which have NA value, the observations are 263.
+322-263=59, so 59 observations were removed in this process.
+
+
+\newpage
+## Question 2: 
+Generate log-transform the salaries. Can you justify this transformation?
+```{r}
+#library('dplyr'), library('moments')
+par(mfrow = c(1,2))
+hist(hitters.na.out$Salary)
+hitters_new<-hitters.na.out%>%mutate(log_salary=log(Salary))
+log_transformation<-hist(log(hitters.na.out$Salary))
+skewness(hitters_new$log_salary)
+```
+
+### Explanation:
+The log transformation can be used to make highly skewed distributions less skewed. This can be valuable both for making patterns in the data more interpretable and for helping to meet the assumptions of inferential statistics. Above plots shows an example of how a log transformation can make patterns more visible. The log transformation makes the distribution approximately normal.
+
+\newpage
+## Question 3: 
+Create a scatterplot with Hits on the y-axis and Years on the x-axis using all the observations. Color code the observations using the log Salary variable. What patterns do you notice on this chart, if any?
+```{r}
+# library('ggplot2'), library('dplyr') 
+hitters.na.out<-hitters.na.out%>%mutate(log_salary=log(Salary))
+hitters.na.out<-hitters.na.out[,-c(19)]
+ggplot(hitters.na.out,aes(y=Hits,x=Years,col=log_salary))+geom_point()
+```
+
+### Explanation:
+The low salary is distributed between 0-5 years, and as the years increases the salary also tend to increase. Hence, the years and the number of hits have positive influence on the salary. There are some exceptions where salary is higher at less number of years and hits.
+
+
+\newpage
+## Question 4: 
+Run a linear regression model of Log Salary on all the predictors using the entire dataset. Use regsubsets() function to perform best subset selection from the regression model. Identify the best model using BIC. Which predictor variables are included in this (best) model?
+```{r}
+#library(leaps), library(stats)
+models <- regsubsets(log_salary~., data = hitters.na.out, nvmax = 19)
+res.sum <- summary(models)
+res.sum$bic
+num<-data.frame(BIC = which.min(res.sum$bic))
+num #results is 3 -159.2777
+res.sum$which[1:5,]
+```
+
+### Explanation:
+After running the regression model, we found that the best model is the one with 3 predictors as these predictors have the lowest BIC values: -159.2777.  
+The predictors are namely Hits, Walks and Years.
+
+
+
+## Question 5: 
+Now create a training data set consisting of 80 percent of the observations, and a test data set consisting of the remaining observations.
+```{r}
+#library(caTools)
+set.seed(42) 
+sample = sample.split(hitters.na.out$log_salary, SplitRatio = .80)
+train.df= subset(hitters.na.out, sample == TRUE)
+valid.df= subset(hitters.na.out, sample == FALSE)
+```
+
+\newpage
+## Question 6: 
+Generate a regression tree of log Salary using only Years and Hits variables from the training data set. Which players are likely to receive highest salaries according to this model? Write down the rule and elaborate on it.
+```{r}
+#library(MASS),library(rpart),library(rpart.plot)
+tree.baseball <- rpart(log_salary ~ Hits + Years,data =train.df)
+#summary(tree.baseball)
+
+rpart.plot(tree.baseball)
+tree.baseball$variable.importance
+```
+
+### Explanation:
+Rule : IF(Years >= 5) and (Hits >= 104) 
+        THEN Salary = 6.7  
+If the Years is more than 5 years and hits more than 104 Hits, they will receive a salary of 6.7 which is the highest.
+
+\newpage
+## Question 7: 
+Now create a regression tree using all the variables in the training data set. 
+Perform boosting on the training set with 1,000 trees for a range of values of the shrinkage parameter lambdas. Produce a plot with different shrinkage values on the x-axis and the corresponding training set MSE on the y-axis.
+```{r}
+#Regression Tree
+tree.baseball_1<-rpart(log_salary~.,data=train.df)
+#summary(tree.baseball_1)
+rpart.plot(tree.baseball_1)
+tree.baseball_1$variable.importance
+
+#lambdas <- c(c(), seq(0.002, 0.01, by=0.001))
+#lambdas <- c(lambdas, seq(0.02, 0.1, by=0.01))
+#lambdas <- c(lambdas, seq(0.2, 1, by=0.1))
+set.seed(42)
+p = seq(-5, -0.2, by = 0.1)
+lambdas = 10^p
+length.lambdas <- length(lambdas)
+train_errors <- rep(NA, length.lambdas)
+test_errors <- rep(NA, length.lambdas)
+
+for (i in 1:length.lambdas) {
+    boost.hitters <- gbm(log_salary~ ., data = train.df, distribution = "gaussian", 
+        n.trees = 1000, shrinkage = lambdas[i])
+    
+    train_pred <- predict(boost.hitters, train.df, n.trees = 1000)
+    test_pred <- predict(boost.hitters, valid.df, n.trees = 1000)
+    
+    train_errors[i] = mean((train.df$log_salary - train_pred)^2)
+    test_errors[i] = mean((valid.df$log_salary - test_pred)^2)
+}
+
+ggplot(data.frame(x=lambdas, y=train_errors), aes(x=x, y=y)) + xlab("Shrinkage") + ylab("Train MSE") + geom_point()
+
+```
+
+\newpage
+## Question 8: 
+Produce a plot with different shrinkage values on the x-axis and the corresponding test set MSE on the y-axis.
+```{r}
+ggplot(data.frame(x=lambdas, y=test_errors), aes(x=x, y=y)) + xlab("Shrinkage") + ylab("Test MSE") + geom_point()
+```
+
+\newpage
+## Question 9: 
+Which variables appear to be the most important predictors in the boosted model?
+```{r}
+boost_best_model <- gbm(log_salary ~ ., data = train.df, distribution = "gaussian", 
+    n.trees = 1000, shrinkage = lambdas[which.min(test_errors)])
+head(summary(boost_best_model))
+```
+
+### Explanation:
+As the result,  the most important predictors in the boosted model is "CAtBat".
+
+\newpage
+## Question 10:
+Now apply bagging to the training set. What is the test set MSE for this approach?
+```{r}
+set.seed(42)
+lm_Hitter <- lm(log_salary ~ ., data = train.df)
+lm_pred <- predict(lm_Hitter, valid.df)
+mean((valid.df$log_salary - lm_pred)^2)
+
+bagging <- randomForest(log_salary~., data = train.df, importance = T, mtry = 19)
+bagging_pred <- predict(bagging, valid.df)
+mean((bagging_pred-valid.df$log_salary)^2)
+```
+### Explanation:
+Before doing the bagging, the MSE is 0.3814122 and after bagging the MSE is lower to 0.2528047.

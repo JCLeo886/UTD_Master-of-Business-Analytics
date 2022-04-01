@@ -1,0 +1,139 @@
+---
+title: "Homework 4"
+author: "Jeffrey Chang"
+date: "2/27/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+5.5
+(b)	Find 95% interval estimates for the coefficients of CRIME and ACCESS.
+```{r}
+library(PoEdata)
+library(foreign)
+library(knitr)
+library(xtable)
+library(printr)
+library(effects)
+library(car)
+library(AER)
+library(broom)
+#CRIME
+print( paste0("b_2+t_(0.975, 497)*se(b2) = ", 
+      -0.1834+round((qt(c(0.975),df=497)*0.0365),3)))
+print( paste0("b_2-t_(0.975, 497)*se(b2) = ", 
+      -0.1834-round((qt(c(0.975),df=497)*0.0365),3)))
+print("95% confidence interval for the coefficient of CRIME is [-0.2554, -0.1114]")
+```
+```{r}
+# ACCESS
+print( paste0("b_2+t_(0.975, 497)*se(b2) = ", 
+      0.2723+round((qt(c(0.975),df=497)*0.0723),3)))
+print( paste0("b_2-t_(0.975, 497)*se(b2) = ", 
+      0.2723-round((qt(c(0.975),df=497)*0.0723),3)))
+print("95% confidence interval for the coefficient of ACCESS is [0.130, -0.414]")
+```
+
+(d) 
+```{r}
+t<-qt(c(0.05),df=497)
+t
+```
+
+5.9D(i)
+```{r}
+print( paste0("b_2+t_(0.975, 998)*se(b2) = ", 
+      2.2774+round((qt(c(0.975),df=998)*0.1394),4)))
+print( paste0("b_2-t_(0.975, 998)*se(b2) = ", 
+      2.2774-round((qt(c(0.975),df=998)*0.1394),4)))
+print("95% confidence interval for the coefficient is [2.0038, 2.551]")
+```
+
+5.9D(ii)
+```{r}
+print( paste0("b_3+8*b_4+t_(0.975, 998)*se(b_3+8*b_4) = ", 0.6013+round((qt(c(0.975),df=998)*0.09045),4)))
+print( paste0("b_3+8*b_4-t_(0.975, 998)*se(b_3+8*b_4) = ", 0.6013-round((qt(c(0.975),df=998)*0.09045),4)))
+print("95% confidence interval for the coefficient is [0.4238, 0.7788]")
+```
+
+5.9D(iii)
+```{r}
+print( paste0("b_3+50*b_4+t_(0.975, 998)*se(b_3+50*b_4) = ", 0.1771+round((qt(c(0.975),df=998)*0.02741),4)))
+print( paste0("b_3+50*b_4-t_(0.975, 998)*se(b_3+50*b_4) = ", 0.1771-round((qt(c(0.975),df=998)*0.02741),4)))
+print("95% confidence interval for the coefficient is [0.1233, 0.2309]")
+```
+
+5.12
+```{r}
+cocaine <- read.dta("cocaine.dta") # input Stata file
+mod1 <- lm(price~quant+qual+trend, data=cocaine)
+summary(mod1)
+```
+
+5.13
+```{r}
+br2 <- read.dta("br2.dta") # input Stata file
+mod2 <- lm(price~sqft+age, data=br2)
+summary(mod2)
+```
+
+5.13(a)(ii)
+```{r}
+print( paste0("b_2+t_(0.975, 1077)*se(b_2) = ", 90.97+round((qt(c(0.975),df=1077)*2.4031),4)))
+print( paste0("b_2-t_(0.975, 1077)*se(b_2) = ", 90.97-round((qt(c(0.975),df=1077)*2.4031),4)))
+print("95% confidence interval for the coefficient is [86.2547, 95.6853]")
+```
+
+5.13(b)
+```{r}
+mod3 <- lm(price~sqft+I(sqft^2)+age+I(age^2),data=br2)
+smod3 <- summary(mod3)
+tabl <- data.frame(xtable(smod3))
+names(tabl) <- c("Estimate",
+"Std. Error", "t", "p-Value")
+kable(tabl, digits=3, align='c',
+caption="The quadratic version of the $br2$ model")
+```
+
+
+5.13(b)(iii)
+```{r}
+varb2 <- vcov(mod3)[2,2]
+varb3 <- vcov(mod3)[3,3]
+varb4 <- vcov(mod3)[4,4]
+varb5 <- vcov(mod3)[5,5]
+covb2b3 <- vcov(mod3)[2,3]
+covb4b5 <- vcov(mod3)[4,5]
+varb2
+varb3
+varb4
+varb5
+covb2b3
+covb4b5
+```
+
+5.13(c)
+```{r}
+mod4 <- lm(price~sqft+I(sqft^2)+age+I(age^2)+(sqft*age),data=br2)
+summary(mod4)
+```
+
+5.13(c)(iii)
+```{r}
+cvarb3 <- vcov(mod4)[3,3]
+cvarb4 <- vcov(mod4)[4,4]
+cvarb5 <- vcov(mod4)[5,5]
+cvarb6 <- vcov(mod4)[6,6]
+ccovb2b3 <- vcov(mod4)[2,3]
+ccovb4b5 <- vcov(mod4)[4,5]
+cvarb3
+cvarb4
+cvarb5
+cvarb6
+ccovb2b3
+ccovb4b5
+```

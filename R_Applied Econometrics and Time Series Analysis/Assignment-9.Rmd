@@ -1,0 +1,110 @@
+---
+title: "Homework 9"
+author: "Jeffrey Chang"
+date: "4/17/2020"
+output: pdf_document
+---
+
+```{r}
+library(plm)
+library(tseries) # for `adf.test()`
+library(dynlm) #for function `dynlm()`
+library(vars) # for function `VAR()`
+library(nlWaldTest) # for the `nlWaldtest()` function
+library(lmtest) #for `coeftest()` and `bptest()`.
+library(broom) #for `glance(`) and `tidy()`
+library(PoEdata) #for PoE4 datasets
+library(car) #for `hccm()` robust standard errors
+library(sandwich)
+library(knitr) #for `kable()`
+library(forecast)
+library(systemfit)
+library(AER)
+library(xtable)
+```
+
+Question 15.6
+
+```{r}
+data("mexican", package="PoEdata")
+mexican <- pdata.frame(mexican, index=c("id", "trans"))
+pdim(mexican)
+```
+
+```{r}
+price.within <- plm(lnprice~regular+rich+alcohol+nocondom+bar+street, data = mexican ,model = "within")
+tbl <- tidy(price.within)
+kable(tbl, digits=5, caption=
+"Fixed effects using 'within' with full sample")
+```
+
+```{r}
+price.random <- plm(lnprice~regular+rich+alcohol+nocondom+bar+street+age+attractive+school, 
+                    data = mexican, random.method ="swar", model ="random")
+kable(tidy(price.random), digits=4, caption="The random effects results for the price")
+```
+
+```{r}
+fix_coef = summary(price.within)$coefficients
+ran_coef = summary(price.random)$coefficients
+fix_minus_ran = fix_coef[, 1]-ran_coef[c(2:4, 8:10), 1]
+sd_fix_minus_ran = sqrt(fix_coef[, 2]^2-ran_coef[c(2:4, 8:10), 2]^2)
+t_value = fix_minus_ran/sd_fix_minus_ran
+round(t_value,4) 
+```
+
+Question 15.10
+```{r}
+crime <- read.dta("crime.dta")
+crime <- pdata.frame(crime, index=c("county", "year"))
+pdim(crime)
+```
+
+```{r}
+crimelm <- lm(lcrmrte~lprbarr+lprbconv+lprbpris+lavgsen+lwmfg, data = crime )
+tb3 <- tidy(crimelm)
+kable(tb3, digits=5, caption=
+"The estimated equation with full sample")
+```
+
+```{r}
+crime.within <- plm(lcrmrte~lprbarr+lprbconv+lprbpris+lavgsen+lwmfg, data = crime, model = "within")
+summary(crime.within)
+```
+
+```{r}
+crime.r <- plm(lcrmrte~lprbarr+lprbconv+lprbpris+lavgsen+lwmfg, data = crime, model = "pooling")
+summary(crime.r)
+```
+
+```{r}
+fcr <- qf(.95, df1=89, df2=535) 
+fcr
+```
+
+```{r}
+crimelm2 <- lm(lcrmrte~lprbarr+lprbconv+lprbpris+lavgsen+lwmfg+ldensity+lpctymle
+               +d82+d83+d84+d85+d86+d87, data = crime)
+tblm2 <- tidy(crimelm2)
+kable(tblm2, digits=4, caption=
+"The coefficient estimates and standard errors from least squares")
+```
+
+```{r}
+crimeno81.within <- plm(lcrmrte~lprbarr+lprbconv+lprbpris+lavgsen+lwmfg+ldensity+lpctymle
+                        +d82+d83+d84+d85+d86+d87, data = crime, model = "within")
+tbno81 <- tidy(crimeno81.within)
+kable(tbno81, digits=4, caption=
+"The coefficient estimates and standard errors from fixed effects (FE) estimation")
+```
+
+part(e)
+```{r}
+Hnull <- c("d82=0", "d83=0", "d84=0",'d85=0','d86=0','d87=0')
+linearHypothesis(crimelm2,Hnull)
+```
+
+```{r}
+Hnull <- c("d82=0", "d83=0", "d84=0",'d85=0','d86=0','d87=0')
+linearHypothesis(crimeno81.within,Hnull)
+```
