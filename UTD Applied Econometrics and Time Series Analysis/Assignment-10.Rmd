@@ -1,0 +1,149 @@
+---
+title: "Homework 10"
+author: "Jeffrey Chang"
+date: "4/24/2020"
+output: pdf_document
+---
+
+```{r}
+library(dynlm) #for the `dynlm()` function
+library(orcutt) # for the `cochrane.orcutt()` function
+library(nlWaldTest) # for the `nlWaldtest()` function
+library(zoo) # for time series functions (not much used here)
+library(pdfetch) # for retrieving data (just mentioned here)
+library(lmtest) #for `coeftest()` and `bptest()`.
+library(broom) #for `glance(`) and `tidy()`
+library(PoEdata) #for PoE4 datasets
+library(car) #for `hccm()` robust standard errors
+library(sandwich)
+library(knitr) #for kable()
+library(forecast)
+```
+
+Question 9.2&4&6
+```{r}
+# 9.6(a)
+t<-qt(c(0.025),df=216)
+t
+```
+```{r}
+# 9.6(b)
+chisqb<-qchisq(0.95, df=1)
+chisqb
+```
+```{r}
+# 9.6(b)
+t<-qt(c(0.025),df=215)
+t
+```
+
+Question 9.22
+9.22(a)
+```{r}
+data("consumptn", package="PoEdata")
+consumptn.ts <- ts(consumptn[4:200,], start=c(1960,4), end=c(2009,4), frequency=4)
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(consumptn.ts[,"congwth"], ylab="CONGWTH")
+abline(h=mean(consumptn$congwth), col="red")
+plot(consumptn.ts[,"incgwth"], ylab="INCGWTH")
+abline(h=mean(consumptn$incgwth), col="red")
+```
+
+9.22(b)
+```{r}
+consumptn.ar2 <- dynlm(congwth~L(incgwth,0), data=consumptn.ts)
+summary(consumptn.ar2)
+ehat <- resid(consumptn.ar2 )
+corrgm <- acf(ehat)
+plot(corrgm)
+round(corrgm$acf,4)
+```
+
+```{r}
+# 9.22(B)
+AIC(consumptn.ar2)
+BIC(consumptn.ar2)
+```
+
+9.22(c)
+```{r}
+consumptn.ar3 <- dynlm(congwth~L(congwth,1)+L(incgwth,0), data=consumptn.ts)
+summary(consumptn.ar3)
+ehat3 <- resid(consumptn.ar3)
+corrgm3 <- acf(ehat3)
+plot(corrgm3)
+```
+
+```{r}
+# 9.22(C)
+AIC(consumptn.ar3)
+BIC(consumptn.ar3)
+```
+
+```{r}
+t<-qt(c(0.975),df=193)
+t
+```
+
+9.22(d)
+```{r}
+consumptn.ar4 <- dynlm(congwth~L(congwth,1:2)+L(incgwth,0), data=consumptn.ts)
+summary(consumptn.ar4)
+ehat4 <- resid(consumptn.ar4)
+corrgm4 <- acf(ehat4)
+plot(corrgm4)
+```
+
+```{r}
+# 9.22(d)
+AIC(consumptn.ar4)
+BIC(consumptn.ar4)
+```
+
+```{r}
+t<-qt(c(0.975),df=191)
+t
+```
+
+9.22(e)
+```{r}
+consumptn.ar5 <- dynlm(congwth~L(congwth,1:2)+L(incgwth,0:1), data=consumptn.ts)
+summary(consumptn.ar5)
+ehat5 <- resid(consumptn.ar5)
+corrgm5 <- acf(ehat5)
+plot(corrgm5)
+```
+
+```{r}
+# 9.22(e)
+AIC(consumptn.ar5)
+BIC(consumptn.ar5)
+```
+
+```{r}
+t<-qt(c(0.975),df=190)
+t
+```
+
+9.22(f)
+```{r}
+consumptn.ar6 <- dynlm(congwth~L(congwth,1:3)+L(incgwth,0:2), data=consumptn.ts)
+AIC(consumptn.ar6)
+BIC(consumptn.ar6)
+```
+
+9.22(g)
+```{r}
+consumptn.ar7 <- dynlm(congwth~L(congwth,2)+L(incgwth,0:1), data=consumptn.ts)
+summary(consumptn.ar7)
+ehat7 <- resid(consumptn.ar7)
+corrgm7 <- acf(ehat7)
+```
+
+```{r}
+AIC(consumptn.ar7)
+BIC(consumptn.ar7)
+```

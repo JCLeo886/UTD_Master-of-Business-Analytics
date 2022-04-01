@@ -1,0 +1,84 @@
+---
+title: "Homework 7"
+author: "Jeffrey Chang"
+date: "4/5/2020"
+output: pdf_document
+---
+```{r}
+library(lmtest) #for coeftest() and bptest().
+library(broom) #for glance() and tidy()
+library(PoEdata) #for PoE4 datasets
+library(car) #for hccm() robust standard errors
+library(sandwich)
+library(knitr)
+library(stargazer)
+library(foreign)
+```
+
+Question 8.12
+```{r}
+# expenditure on education (EE), gross domestic product (GDP), and population (P) 
+pubexp <- read.dta("pubexp.dta")
+ee_p<-pubexp$ee/pubexp$p
+gdp_p<-pubexp$gdp/pubexp$p
+pubexp <-cbind(pubexp,ee_p)
+pubexp <-cbind(pubexp,gdp_p)
+summary(pubexp)
+```
+
+```{r, fig.width = 4, fig.height = 3}
+mod1 <- lm(ee_p~gdp_p, data=pubexp)
+plot(pubexp$gdp_p,pubexp$ee_p, type="p",
+xlab="GDP", ylab="Expenditure on Education")
+abline(mod1, col="red")
+```
+```{r}
+kable(tidy(mod1), caption="A Regression Model", digits=6)
+```
+
+```{r}
+ressq <- resid(mod1)^2
+modres <- lm(ressq~gdp_p+I(gdp_p^2), data=pubexp)
+summary(modres)
+```
+
+```{r}
+N <- 34
+gmodres <- glance(modres)
+chisq1<-((gmodres$r.squared)*N)
+print( paste0("The White test statistic is = N*R^2 =  ", 
+              round(chisq1, 4)))
+
+print( paste0("The critical chi-squared value for the White test at a = 0.05 is = ", 
+              round(qchisq(.95, df=2), 4)))
+
+```
+```{r}
+# part D
+# Regular standard errors in the 'MILES' equation
+kable(tidy(mod1),digits = 6)
+```
+
+```{r}
+# needs package 'car'
+# Robust (HC1) standard errors in the 'MILES' equation
+cov1 <- hccm(mod1, type="hc1") 
+mod1.HC1 <- coeftest(mod1, vcov.=cov1)
+kable(tidy(mod1.HC1), digits = 6)
+```
+
+```{r}
+t <- qt(c(0.975), df=32)
+round(t, 4)
+```
+
+```{r}
+# part E
+w <- 1/pubexp$gdp_p
+pubexp.wls <- lm(ee_p~gdp_p, weights=w, data=pubexp)
+kable(tidy(pubexp.wls),
+caption="WLS estimates for the 'EE' equation" , digits = 6)
+
+```
+
+

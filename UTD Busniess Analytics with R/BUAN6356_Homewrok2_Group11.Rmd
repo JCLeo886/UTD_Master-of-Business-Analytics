@@ -1,0 +1,296 @@
+---
+title: "BUAN6356_Homework2_Group11"
+author: "Jeffrey Chang,Naishal Kanubhai Thakkar,Bhavana Chowdary Kandimalla,Navya Bulusu,Rucha Nichkawade"
+date: "10/1/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r loadpackages, message = FALSE, warning = FALSE}
+
+if(!require("pacman")) install.packages("pacman")
+pacman::p_load(data.table, leaps, MASS, GGally, caTools, forecast, plyr, dplyr, scales)
+
+```
+
+
+```{r}
+# load file.cvs
+airfares.df<-read.csv("Airfares.csv")
+airfares.df<-airfares.df[,-c(1:4)]
+
+```
+
+
+## Question_1:
+Create a correlation table and scatterplots between FARE and the predictors.
+What seems to be the best single predictor of FARE? Explain your answer.
+
+```{r}
+#Run correlation table
+airfares.cor.df<-airfares.df
+#set up the categorical variable
+airfares.cor.df$VACATION <- revalue(airfares.cor.df$VACATION, c("Yes"=1))
+airfares.cor.df$VACATION <- revalue(airfares.cor.df$VACATION, c("No"=0))
+airfares.cor.df$SW <- revalue(airfares.cor.df$SW , c("Yes"=1))
+airfares.cor.df$SW  <- revalue(airfares.cor.df$SW , c("No"=0))
+airfares.cor.df$SLOT <- revalue(airfares.cor.df$SLOT , c("Controlled"=1))
+airfares.cor.df$SLOT  <- revalue(airfares.cor.df$SLOT , c("Free"=0))
+airfares.cor.df$GATE <- revalue(airfares.cor.df$GATE , c("Constrained"=1))
+airfares.cor.df$GATE  <- revalue(airfares.cor.df$GATE , c("Free"=0))
+#set Factor into Num
+airfares.cor.df$VACATION = as.numeric(airfares.cor.df$VACATION)
+airfares.cor.df$SW = as.numeric(airfares.cor.df$SW)
+airfares.cor.df$SLOT = as.numeric(airfares.cor.df$SLOT)
+airfares.cor.df$GATE = as.numeric(airfares.cor.df$GATE)
+cor.FARE<-round(cor(airfares.cor.df$FARE, airfares.cor.df),2)
+cor.FARE
+
+```
+As per the output of the correlation matrix, the correlation co - efficient is high for Fare and distance
+hence we can say that, the best single predictor for FARE is distance.
+
+\newpage
+
+```{r}
+
+cat("Scatter Plots between FARE and the Predictors")
+par(mfrow = c(2,2))
+
+plot(airfares.df$COUPON, airfares.df$FARE, main="Scatterplot of FARE&COUPON",
+   ylab="FARE ", xlab="COUPON", pch=20)
+plot(airfares.df$NEW, airfares.df$FARE, main="Scatterplot of FARE&NEW",
+   ylab="FARE ", xlab="NEW", pch=20)
+plot(as.numeric(airfares.df$VACATION), airfares.df$FARE, main="Scatterplot of FARE&VACATION",
+   ylab="FARE ", xlab="VACATION", pch=20)
+plot(as.numeric(airfares.df$SW), airfares.df$FARE, main="Scatterplot of FARE&SW",
+   ylab="FARE ", xlab="SW", pch=20)
+plot(airfares.df$HI, airfares.df$FARE, main="Scatterplot of FARE&HI",
+   ylab="FARE ", xlab="HI", pch=20)
+plot(airfares.df$S_INCOME, airfares.df$FARE, main="Scatterplot of FARE&S_INCOME,",
+   ylab="FARE ", xlab="S_INCOME,", pch=20)
+plot(airfares.df$E_INCOME, airfares.df$FARE, main="Scatterplot of FARE&E_INCOME",
+   ylab="FARE ", xlab="E_INCOME", pch=20)
+plot(airfares.df$S_POP, airfares.df$FARE, main="Scatterplot of FARE&S_POP",
+   ylab="FARE ", xlab="S_POP", pch=20)
+plot(airfares.df$E_POP, airfares.df$FARE, main="Scatterplot of FARE&E_POP",
+   ylab="FARE ", xlab="E_POP", pch=20)
+plot(as.numeric(airfares.df$SLOT), airfares.df$FARE, main="Scatterplot of FARE&SLOT",
+   ylab="FARE ", xlab="SLOT", pch=20)
+plot(as.numeric(airfares.df$GATE), airfares.df$FARE, main="Scatterplot of FARE&GATE",
+   ylab="FARE ", xlab="GATE", pch=20)
+plot(airfares.df$DISTANCE, airfares.df$FARE, main="Scatterplot of FARE&DISTANCE",
+   ylab="FARE ", xlab="DISTANCE", pch=20)
+plot(airfares.df$PAX, airfares.df$FARE, main="Scatterplot of FARE&PAX",
+   ylab="FARE ", xlab="PAX", pch=20)
+
+```
+The above represents the scatterplot for FARE vs all the variables.
+When we plot a scatterplot of FARE vs Categorical Variable(VACATION,SW,SLOT,GATE) there is no trend observed.
+when we plot a scatterplot of FARE vs numerical variables(COUPON,NEW,HI,S_INCOME,E_INCOME,S_POP,E_POP,DISTANCE,PAX) maximum trend/co-linearity is observed between FARE and distance which again proves that distance is the single best predictor of FARE.
+
+\newpage
+## Question_2:
+Explore the categorical predictors by computing the percentage of flights in each category. 
+Create a pivot table with the average fare in each category. 
+Which categorical predictor seems best for predicting FARE? Explain your answer.
+
+```{r}
+airfares<-airfares.df
+mean(airfares$FARE)
+#VACATION
+v1<-airfares%>%group_by(VACATION)%>%summarize(Mean_fare=mean(FARE))
+v2<-airfares%>%group_by(VACATION)%>%count(VACATION)%>%summarize(Percentage_flights=n*100/nrow(airfares))
+cbind(v1,v2[,-1])
+#SW
+s1<-airfares%>%group_by(SW)%>%summarize(Mean_fare=mean(FARE))
+s2<-airfares%>%group_by(SW)%>%count(SW)%>%summarize(Percentage_flights=n*100/nrow(airfares))
+cbind(s1,s2[,-1])
+
+#SLOT
+sl1<-airfares%>%group_by(SLOT)%>%summarize(Mean_fare=mean(FARE))
+sl2<-airfares%>%group_by(SLOT)%>%count(SLOT)%>%summarize(Percentage_flights=n*100/nrow(airfares))
+cbind(sl1,sl2[,-1])
+#GATE
+g1<-airfares%>%group_by(GATE)%>%summarize(Mean_fare=mean(FARE))
+g2<-airfares%>%group_by(GATE)%>%count(GATE)%>%summarize(Percentage_flights=n*100/nrow(airfares))
+cbind(g1,g2[,-1])
+
+aov_SW <- aov(FARE ~ SW, data = airfares.df)
+summary(aov_SW)
+aov_VACATION <- aov(FARE ~ VACATION, data = airfares.df)
+summary(aov_VACATION)
+aov_SLOT <- aov(FARE ~ SLOT, data = airfares.df)
+summary(aov_SLOT)
+aov_GATE <- aov(FARE ~ GATE, data = airfares.df)
+summary(aov_GATE)
+```
+1.The best predictor for FARE is the categorical variable which produces the largest difference in the average FARE between two categories, so the average between two categories is highest for SW hence we can say that SW is the best categorical predictor. 
+
+2.From to analysis of variance(ANOVA), the P value of SW is least(2*e^-16) we can say that the relationship between FARE and SW is significant compared to other categorical variables.
+
+3.As the correlation co-efficient of SW and FARE is the highest amongst the categorical variables, we can say that SW seems to be the best predictor of FARE.
+\newpage
+
+## Question_3:
+Create data partition by assigning 80% of the records to the training dataset. Use
+rounding if 80% of the index generates a fraction. Also, set the seed at 42.
+
+```{r}
+
+set.seed(42) 
+sample = sample.split(airfares.df$FARE, SplitRatio = .80)
+train.df= subset(airfares.df, sample == TRUE)
+valid.df= subset(airfares.df, sample == FALSE)
+head(train.df)
+
+```
+
+\newpage
+## Question 4:
+Using leaps package, run stepwise regression to reduce the number of predictors.
+Discuss the results from this model.
+
+```{r use leaps package do stepwise regression}
+
+stepwise.regression = regsubsets(FARE ~ ., data = train.df, nvmax = 14, method = "seqrep")
+reg.summary = summary(stepwise.regression)
+
+print("summary$which")
+reg.summary$which
+print("summary$rsq")
+reg.summary$rsq
+print("summary$adjr2")
+reg.summary$adjr2
+print("summary$Cp")
+reg.summary$cp
+
+```
+After running the stepwise regression, we observed that the ajusted r2 is high for model 12 and the corresponding cp value is low which are the main factors for determining the best possible model after regression. Hence we choose model which has 12 explainatory variables i.e NEW,VACATION,SWYES,HI,S_INCOME,E_INCOME,S_POP,E_POP,SLOTFREE,GATEFREE,DISTANCE and PAX as the best possible model, and eliminate one of the predictors i.e COUPON.
+
+
+\newpage
+## Question 5:
+Repeat the process in (4) using exhaustive search instead of stepwise regression.
+Compare the resulting best model to the one you obtained in (4) in terms of the
+predictors included in the final model.
+```{r use leaps package do exhaustive.search}
+
+exhaustive.search<-regsubsets(FARE ~ ., data=train.df, nbest = 1, nvmax =14 , method = "exhaustive")
+sum<-summary(exhaustive.search)
+
+#show model
+print("sum$which")
+sum$which
+
+#show metrics
+print("sum$rsq")
+sum$rsq
+print("sum$adjr2")
+sum$adjr2
+print("sum$Cp")
+sum$cp
+
+```
+
+After running the regression model, we observed that the ajusted r2 is high for model 11 and the corresponding cp value is low which are the main factors for determining the best posssible model after regression.  Hence we choose model which has 11 explainatory variables i.e VACATION,SWYES,HI,S_INCOME,E_INCOME,S_POP,E_POP,SLOTFREE,GATEFREE,DISTANCE and PAX as the best possible model, and eliminate two of the predictors i.e COUPON and NEW.
+
+
+\newpage
+## Question 6:
+Compare the predictive accuracy of both models—stepwise regression and
+exhaustive search—using measures such as RMSE.
+
+```{r predictive accuracy}
+
+print("stepwise regression")
+
+airfares.sr.lm<-lm(formula = FARE ~ NEW+VACATION+SW+HI+S_INCOME+E_INCOME+S_POP+E_POP+SLOT+GATE+DISTANCE+PAX, data = train.df)
+airfares.stepwise.pred <- predict(airfares.sr.lm, valid.df)
+accuracy(airfares.stepwise.pred, valid.df$FARE)
+
+print("exhaustive search")
+
+airfares.es.lm<-lm(formula = FARE ~ VACATION+SW+HI+S_INCOME+E_INCOME+S_POP+E_POP+SLOT+GATE+DISTANCE+PAX, data = train.df)
+airfares.exhaustive.search.pred <- predict(airfares.es.lm, valid.df)
+accuracy(airfares.exhaustive.search.pred, valid.df$FARE)
+
+```
+The RMSE values for step and exhaustive are 32.52078 and 32.65557 respectively.The RMSE value is stepwise regression is comparitively less than the RMSE value of exhaustive regression.
+
+\newpage
+## Question 7:
+Using the exhaustive search model, predict the average fare on a route with the
+following characteristics: COUPON = 1.202, NEW = 3, VACATION = No, SW =
+No, HI = 4442.141, S_INCOME = $28,760, E_INCOME = $27,664, S_POP =
+4,557,004, E_POP = 3,195,503, SLOT = Free, GATE = Free, PAX = 12,782,
+DISTANCE = 1976 miles.
+```{r}
+#No Coupon and New
+
+new_1.df <- data.frame(COUPON = 1.202, NEW = 3,VACATION = "No", SW="No", HI= 4442.141, S_INCOME = 28760, E_INCOME=27664, S_POP= 4557004, E_POP= 3195503, SLOT = "Free", GATE="Free", PAX= 12782, DISTANCE = 1976)
+
+model_1<-lm(FARE ~ VACATION + SW + HI + S_INCOME + E_INCOME + S_POP + E_POP + SLOT + GATE + PAX + DISTANCE, 
+            data = train.df)
+                    
+predict(model_1, newdata = new_1.df)
+
+```
+From the Exhaustive search, we eliminate the predictors COUPON and NEW we do not include those predictors while running the model.So the average fare on this route is 252.9115.
+
+
+## Question 8:
+Predict the reduction in average fare on the route in question (7.), if Southwest
+decides to cover this route [using the exhaustive search model above].
+
+```{r}
+
+new_2.df <- data.frame(COUPON = 1.202, NEW = 3,VACATION = "No", SW="Yes", HI= 4442.141, S_INCOME = 28760, E_INCOME=27664, S_POP= 4557004, E_POP= 3195503, SLOT = "Free", GATE="Free", PAX= 12782, DISTANCE = 1976)
+
+model_2<-lm(FARE ~ VACATION + SW + HI + S_INCOME + E_INCOME + S_POP + E_POP + SLOT + GATE + PAX + DISTANCE, 
+            data = train.df)
+                    
+predict(model_2, newdata = new_2.df)
+
+```
+As the southwest airlines decides to cover this route we change the SW predictor to 'YES'.The average fare on this route is 213.4966.
+So the redution after the southwest airlines decides to cover this route  will be 252.9115 - 213.4966 = 39.414
+
+\newpage
+## Question 9:
+Using leaps package, run backward selection regression to reduce the number of
+predictors. Discuss the results from this model.
+
+```{r}
+
+stepwise.regression.b = regsubsets(FARE ~ ., data = train.df, nvmax = 14, method = "backward")
+summary.b = summary(stepwise.regression.b)
+
+print("summary$which")
+summary.b$which
+print("summary$rsq")
+summary.b$rsq
+print("summary$adjr2")
+summary.b$adjr2
+print("summary$Cp")
+summary.b$cp
+
+```
+After running the regression model, we observed that the ajusted r2 is high for model 11 and the corresponding cp value is low which are the main factors for determining the best posssible model after regression.  Hence we choose model which has 11 explainatory variables i.e VACATION,SWYES,HI,S_INCOME,E_INCOME,S_POP,E_POP,SLOTFREE,GATEFREE,DISTANCE and PAX as the best possible model, and eliminate two of the predictors i.e COUPON and NEW.
+
+\newpage
+## Question 10:
+Now run a backward selection model using stepAIC() function. Discuss the
+results from this model, including the role of AIC in this model.
+
+```{r}
+library(MASS)
+airfares_stepAIC<- lm(FARE ~ ., data = train.df)
+airfares_stepAIC_results <- stepAIC(airfares_stepAIC, direction = 'backward')
+
+```
+In the backward Regression, in the first step we consider all the predictors so the AIC value is 3679.29.
+We can see from the model that on removing the COUPON predictor the AIC will decrease to 3677.3.
+Further on removing the NEW predictor the AIC will decrease to 3676.0.
+Now we can see that AIC is already the least amoung all the predictors so on removing any other variable the AIC would not decrease. Hence we get the model which comprises of 11 predictors.
+
